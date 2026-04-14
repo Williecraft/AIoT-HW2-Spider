@@ -1,4 +1,20 @@
-__pycache__/
-*.pyc
-.venv/
+# Environments
+.env
+.venv
+env/
 venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Generated data files
+weather_data.csv
+data.json
+
+# Streamlit
+.streamlit/
