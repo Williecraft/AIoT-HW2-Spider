@@ -15,7 +15,8 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-DB_FILE = 'data.db'
+DATA_DIR = 'data'
+DB_FILE = os.path.join(DATA_DIR, 'data.db')
 
 REGION_COORDS = {
     '北部':   (25.05, 121.55),
@@ -28,7 +29,7 @@ REGION_COORDS = {
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Raleway:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;600;700&family=Raleway:wght@300;400;500;600;700&display=swap');
 
 /* ─── TOKENS ─────────────────────────────────────────────── */
 :root {
@@ -47,6 +48,9 @@ st.markdown("""
     --muted:    #6d8fa8;
     --border:   rgba(201,169,110,0.18);
     --border2:  rgba(201,169,110,0.35);
+    --font-ui:  'Noto Sans TC', 'Segoe UI', sans-serif;
+    --font-display: 'Cormorant Garamond', 'Times New Roman', serif;
+    --font-cjk-display: 'Noto Serif TC', 'Noto Sans TC', serif;
 }
 
 /* ─── RESET & BASE ───────────────────────────────────────── */
@@ -56,7 +60,7 @@ html, body, [data-testid="stAppViewContainer"],
 }
 
 .stApp {
-    font-family: 'Raleway', sans-serif;
+    font-family: var(--font-ui);
     color: var(--text);
     background-color: var(--ink);
 
@@ -103,14 +107,14 @@ html, body, [data-testid="stAppViewContainer"],
 [data-testid="stSidebar"] .stMarkdown a {
     color: var(--muted) !important;
     font-family: 'Raleway', sans-serif !important;
-    font-size: .82rem !important;
+    font-size: .95rem !important;
     letter-spacing: .02em;
     line-height: 1.8;
 }
 [data-testid="stSidebar"] .stMarkdown h3 {
     color: var(--gold) !important;
     font-family: 'Cormorant Garamond', serif !important;
-    font-size: 1.3rem !important;
+    font-size: 1.5rem !important;
     font-weight: 400 !important;
     letter-spacing: .18em !important;
     text-transform: uppercase !important;
@@ -119,7 +123,7 @@ html, body, [data-testid="stAppViewContainer"],
 [data-testid="stSidebar"] .stMarkdown h4 {
     color: var(--sky) !important;
     font-family: 'Raleway', sans-serif !important;
-    font-size: .68rem !important;
+    font-size: .82rem !important;
     font-weight: 700 !important;
     letter-spacing: .2em !important;
     text-transform: uppercase !important;
@@ -137,7 +141,7 @@ html, body, [data-testid="stAppViewContainer"],
     color: var(--gold) !important;
     font-family: 'Raleway', sans-serif !important;
     font-weight: 600 !important;
-    font-size: .78rem !important;
+    font-size: .92rem !important;
     letter-spacing: .14em !important;
     text-transform: uppercase !important;
     padding: .65rem 1.2rem !important;
@@ -181,15 +185,17 @@ html, body, [data-testid="stAppViewContainer"],
 }
 .hero-overline {
     font-family: 'Raleway', sans-serif;
-    font-size: .67rem;
+    font-size: .82rem;
     font-weight: 700;
-    letter-spacing: .32em;
+    letter-spacing: .28em;
     text-transform: uppercase;
     color: var(--gold);
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: .8rem;
     margin-bottom: 1.2rem;
+    opacity: .92;
 }
 .hero-overline::before {
     content: '';
@@ -199,27 +205,35 @@ html, body, [data-testid="stAppViewContainer"],
     background: var(--gold);
 }
 .hero h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 4.2rem;
-    font-weight: 300;
-    line-height: 1.05;
+    font-family: var(--font-cjk-display);
+    font-size: clamp(3.35rem, 8vw, 5.1rem);
+    font-weight: 600;
+    line-height: 1.08;
     color: var(--text);
-    margin: 0 0 .8rem;
-    letter-spacing: -.02em;
+    margin: 0 0 1rem;
+    letter-spacing: .05em;
+    text-wrap: balance;
+    text-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
 }
-.hero h1 em {
-    font-style: italic;
+.hero h1 em,
+.hero h1 .hero-accent {
     color: var(--gold);
-    font-weight: 400;
+    font-weight: 700;
+    font-style: normal;
+}
+.hero h1 .hero-main {
+    color: var(--text);
 }
 .hero-sub {
-    font-size: .8rem;
+    font-family: var(--font-ui);
+    font-size: 1.02rem;
     color: var(--muted);
-    letter-spacing: .08em;
-    font-weight: 400;
+    letter-spacing: .04em;
+    font-weight: 500;
     display: flex;
     align-items: center;
     gap: 1.2rem;
+    flex-wrap: wrap;
 }
 .hero-sub span {
     display: flex;
@@ -234,23 +248,84 @@ html, body, [data-testid="stAppViewContainer"],
 }
 .hero-sub span:first-child::before { display: none; }
 
+.hero-sub span::before {
+    content: '\2022';
+    font-size: .8rem;
+}
+
+@media (max-width: 768px) {
+    .hero {
+        padding: 2.6rem 1.25rem 2.2rem;
+    }
+
+    .hero-overline {
+        font-size: .72rem;
+        letter-spacing: .18em;
+        gap: .55rem;
+    }
+
+    .hero-overline::before {
+        width: 1.2rem;
+    }
+
+    .hero h1 {
+        letter-spacing: .03em;
+    }
+
+    .hero-sub {
+        font-size: .92rem;
+        gap: .7rem;
+    }
+
+    .sec-head .sec-label {
+        font-size: .72rem;
+        letter-spacing: .12em;
+    }
+
+    .card-date {
+        font-size: .68rem;
+    }
+
+    .card-wx {
+        font-size: .76rem;
+    }
+
+    .card-tmax {
+        font-size: 1.75rem;
+    }
+
+    .card-tmin {
+        font-size: 1.12rem;
+    }
+
+    .wx-table {
+        font-size: .88rem;
+    }
+
+    .wx-table th {
+        font-size: .68rem;
+    }
+}
+
 /* ─── SECTION DIVIDER ────────────────────────────────────── */
 .sec-head {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 1rem;
     margin: 2.5rem 0 1.4rem;
 }
 .sec-head .sec-label {
     font-family: 'Raleway', sans-serif;
-    font-size: .65rem;
+    font-size: .8rem;
     font-weight: 700;
-    letter-spacing: .28em;
+    letter-spacing: .18em;
     text-transform: uppercase;
     color: var(--gold);
-    white-space: nowrap;
+    white-space: normal;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: .6rem;
 }
 .sec-head .sec-label::before,
@@ -283,7 +358,7 @@ html, body, [data-testid="stAppViewContainer"],
     border: 1px solid var(--border);
     border-top: 2px solid rgba(201,169,110,0.25);
     border-radius: 10px;
-    padding: 1.4rem .9rem 1.2rem;
+    padding: 1.55rem 1rem 1.3rem;
     text-align: center;
     position: relative;
     overflow: hidden;
@@ -321,7 +396,7 @@ html, body, [data-testid="stAppViewContainer"],
 
 .card-date {
     font-family: 'Raleway', sans-serif;
-    font-size: .62rem;
+    font-size: .76rem;
     font-weight: 700;
     letter-spacing: .18em;
     text-transform: uppercase;
@@ -329,18 +404,19 @@ html, body, [data-testid="stAppViewContainer"],
     margin-bottom: .55rem;
 }
 .card-emoji {
-    font-size: 1.9rem;
+    font-size: 2.15rem;
     line-height: 1.2;
     margin-bottom: .4rem;
 }
 .card-wx {
-    font-size: .67rem;
+    font-size: .84rem;
     font-family: 'Raleway', sans-serif;
     color: var(--muted);
-    min-height: 2.6em;
-    line-height: 1.5;
+    min-height: 3em;
+    line-height: 1.55;
     margin-bottom: .6rem;
     padding: 0 .2rem;
+    overflow-wrap: anywhere;
 }
 .card-divider {
     width: 1.5rem;
@@ -351,14 +427,14 @@ html, body, [data-testid="stAppViewContainer"],
 }
 .card-tmax {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1.8rem;
+    font-size: 2.05rem;
     font-weight: 600;
     color: var(--gold);
     line-height: 1;
     letter-spacing: -.01em;
 }
 .card-tmax sup {
-    font-size: .8rem;
+    font-size: .92rem;
     font-weight: 300;
     vertical-align: super;
     color: var(--gold-dk);
@@ -366,7 +442,7 @@ html, body, [data-testid="stAppViewContainer"],
 }
 .card-tmin {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1.1rem;
+    font-size: 1.28rem;
     font-weight: 300;
     color: var(--sky);
     margin-top: .1rem;
@@ -381,7 +457,7 @@ html, body, [data-testid="stAppViewContainer"],
     border-radius: 6px !important;
     color: #d2e0ef !important;
     font-family: 'Raleway', sans-serif !important;
-    font-size: .88rem !important;
+    font-size: 1rem !important;
     letter-spacing: .05em !important;
 }
 
@@ -400,7 +476,7 @@ html, body, [data-testid="stAppViewContainer"],
     width: 100%;
     border-collapse: collapse;
     font-family: 'Raleway', sans-serif;
-    font-size: .84rem;
+    font-size: .96rem;
     background: rgba(12,29,48,0.55);
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -410,9 +486,9 @@ html, body, [data-testid="stAppViewContainer"],
     border-bottom: 1px solid rgba(201,169,110,.3);
 }
 .wx-table th {
-    padding: .85rem 1.1rem;
+    padding: .95rem 1.1rem;
     text-align: left;
-    font-size: .63rem;
+    font-size: .76rem;
     font-weight: 700;
     letter-spacing: .18em;
     text-transform: uppercase;
@@ -421,17 +497,18 @@ html, body, [data-testid="stAppViewContainer"],
     white-space: nowrap;
 }
 .wx-table td {
-    padding: .8rem 1.1rem;
+    padding: .95rem 1.1rem;
     color: var(--text);
     border-bottom: 1px solid rgba(255,255,255,0.04);
     vertical-align: middle;
+    line-height: 1.55;
 }
 .wx-table tbody tr:last-child td { border-bottom: none; }
 .wx-table tbody tr:hover td { background: rgba(201,169,110,.04); }
-.wx-table .td-date  { color: var(--muted); font-size:.8rem; letter-spacing:.04em; }
-.wx-table .td-maxt  { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-weight:600; color: var(--gold); }
-.wx-table .td-mint  { font-family: 'Cormorant Garamond', serif; font-size: 1rem;   color: var(--sky); }
-.wx-table .td-wx    { color: var(--muted); font-size: .82rem; }
+.wx-table .td-date  { color: var(--muted); font-size:.92rem; letter-spacing:.04em; }
+.wx-table .td-maxt  { font-family: 'Cormorant Garamond', serif; font-size: 1.28rem; font-weight:600; color: var(--gold); }
+.wx-table .td-mint  { font-family: 'Cormorant Garamond', serif; font-size: 1.14rem; color: var(--sky); }
+.wx-table .td-wx    { color: var(--muted); font-size: .94rem; overflow-wrap: anywhere; }
 
 /* ─── MAP CONTAINER ──────────────────────────────────────── */
 .element-container iframe {
@@ -570,7 +647,7 @@ with st.sidebar:
     st.markdown("""
 - 資料來源：**中央氣象署**
 - API：`F-A0010-001`
-- 儲存：`data.db` (SQLite3)
+- 儲存：`data/data.db` (SQLite3)
 - 框架：Streamlit + Folium
 """)
 
@@ -633,8 +710,8 @@ for _, row in today_df.iterrows():
         box-shadow: 0 0 0 4px rgba(201,169,110,0.12), 0 6px 20px rgba(0,0,0,0.6);
         cursor: pointer;
     ">
-        <div style="font-size:1.3rem; line-height:1.1;">{emoji}</div>
-        <div style="font-size:.58rem; color:#c9a96e; font-weight:700; letter-spacing:.03em; line-height:1.3;">{row['MaxT']}°<span style="color:#6d8fa8">/{row['MinT']}°</span></div>
+        <div style="font-size:1.45rem; line-height:1.1;">{emoji}</div>
+        <div style="font-size:.7rem; color:#c9a96e; font-weight:700; letter-spacing:.03em; line-height:1.3;">{row['MaxT']}°<span style="color:#6d8fa8">/{row['MinT']}°</span></div>
     </div>
     """
 
@@ -648,12 +725,12 @@ for _, row in today_df.iterrows():
         min-width: 160px;
         box-shadow: 0 8px 24px rgba(0,0,0,.5);
     ">
-        <div style="font-size:.65rem; letter-spacing:.2em; text-transform:uppercase; color:#c9a96e; margin-bottom:6px; font-weight:700;">{row['regionName']}</div>
-        <div style="font-size:.72rem; color:#6d8fa8; margin-bottom:4px;">{row['dataDate']}</div>
-        <div style="font-size:.78rem; color:#d2e0ef;">{emoji} {row['weather']}</div>
+        <div style="font-size:.76rem; letter-spacing:.14em; text-transform:uppercase; color:#c9a96e; margin-bottom:6px; font-weight:700; overflow-wrap:anywhere;">{row['regionName']}</div>
+        <div style="font-size:.82rem; color:#6d8fa8; margin-bottom:4px;">{row['dataDate']}</div>
+        <div style="font-size:.92rem; color:#d2e0ef; overflow-wrap:anywhere;">{emoji} {row['weather']}</div>
         <div style="margin-top:8px; display:flex; gap:10px; align-items:baseline;">
-            <span style="font-family:'Cormorant Garamond',serif; font-size:1.4rem; color:#c9a96e; font-weight:600; line-height:1;">{row['MaxT']}°</span>
-            <span style="font-family:'Cormorant Garamond',serif; font-size:.95rem; color:#6d8fa8;">{row['MinT']}°</span>
+            <span style="font-family:'Cormorant Garamond',serif; font-size:1.55rem; color:#c9a96e; font-weight:600; line-height:1;">{row['MaxT']}°</span>
+            <span style="font-family:'Cormorant Garamond',serif; font-size:1.08rem; color:#6d8fa8;">{row['MinT']}°</span>
         </div>
     </div>
     """
@@ -765,7 +842,7 @@ if selected:
         ),
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # Table section
     st.markdown("""
@@ -807,7 +884,7 @@ components.html("""
     const style = parent.document.createElement('style');
     style.id = ID;
     style.textContent = `
-        @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Raleway:wght@400;600&display=swap');
 
         /* Popup wrapper */
         [data-baseweb="popover"] > div,
@@ -830,8 +907,8 @@ components.html("""
         [data-baseweb="menu"] li {
             background: transparent !important;
             color: #6d8fa8 !important;
-            font-family: 'Raleway', sans-serif !important;
-            font-size: 0.86rem !important;
+            font-family: 'Noto Sans TC', 'Segoe UI', sans-serif !important;
+            font-size: 0.98rem !important;
             letter-spacing: 0.04em !important;
             padding: 10px 18px !important;
             border-bottom: 1px solid rgba(255,255,255,0.04) !important;

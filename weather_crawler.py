@@ -7,6 +7,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+DATA_DIR = 'data'
+DB_FILE = os.path.join(DATA_DIR, 'data.db')
+CSV_FILE = os.path.join(DATA_DIR, 'weather_data.csv')
+
+
+def ensure_data_dir():
+    os.makedirs(DATA_DIR, exist_ok=True)
+
 # ── HW2-1：調用 CWA API 獲取天氣預報資料 ──────────────────────────────────────
 
 def fetch_weather_data():
@@ -70,7 +78,8 @@ def extract_temperature_data(data):
 
 # ── HW2-3：將氣溫資料儲存到 SQLite3 資料庫 ───────────────────────────────────
 
-def save_to_sqlite(records, db_file='data.db'):
+def save_to_sqlite(records, db_file=DB_FILE):
+    ensure_data_dir()
     conn = sqlite3.connect(db_file)
     cur  = conn.cursor()
 
@@ -110,7 +119,8 @@ def save_to_sqlite(records, db_file='data.db'):
 
 # ── 次要輸出：保留 CSV（供參考） ─────────────────────────────────────────────
 
-def save_to_csv(records, output_file='weather_data.csv'):
+def save_to_csv(records, output_file=CSV_FILE):
+    ensure_data_dir()
     headers = ['Location', 'Date', 'Weather', 'Max_Temperature', 'Min_Temperature']
     with open(output_file, 'w', newline='', encoding='utf-8-sig') as f:
         writer = csv.writer(f)

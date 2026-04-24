@@ -26,19 +26,19 @@ Run the web app (recommended entry point):
 streamlit run app.py
 ```
 
-Run the crawler standalone to regenerate `weather_data.csv`:
+Run the crawler standalone to refresh local weather data:
 ```bash
 python weather_crawler.py
 ```
 
 ## Architecture
 
-Two-file pipeline:
+Primary app pipeline:
 
-**`weather_crawler.py`** — Fetches JSON from CWA API endpoint `F-A0010-001`, parses the nested structure under `cwaopendata.resources.resource.data.agrWeatherForecasts.weatherForecasts.location`, and writes `weather_data.csv` with columns: `Location`, `Date`, `Weather`, `Max_Temperature`, `Min_Temperature`. Uses `ssl.CERT_NONE` to bypass certificate verification.
+**`weather_crawler.py`** — Fetches JSON from CWA API endpoint `F-A0010-001`, parses the nested structure under `cwaopendata.resources.resource.data.agrWeatherForecasts.weatherForecasts.location`, and writes the normalized result into `data/data.db`. It also exports `data/weather_data.csv` as a secondary inspection file.
 
-**`app.py`** — Streamlit UI that reads `weather_data.csv` (cached 10 min via `@st.cache_data`). The sidebar "更新氣象資料" button triggers `weather_crawler.py` as a subprocess. Main view shows per-location 7-day cards using `st.metric`, with an expandable raw dataframe below.
+**`app.py`** — Streamlit UI that reads from SQLite (`data/data.db`) with cached query helpers. The sidebar "更新氣象資料" button triggers `weather_crawler.py` as a subprocess. The main view includes a Taiwan regional weather map, 7-day forecast cards, a Plotly temperature chart, and a detailed HTML table.
 
-**Data flow:** API → `weather_crawler.py` → `weather_data.csv` → `app.py` → browser
+**Data flow:** API → `weather_crawler.py` → `data/data.db` → `app.py` → browser
 
-`weather_data.csv` is gitignored and must be generated locally before the app can display data.
+Generated runtime data in `data/` is gitignored and must be created locally before the app can display weather content.

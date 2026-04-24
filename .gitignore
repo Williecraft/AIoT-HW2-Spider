@@ -16,10 +16,10 @@ __pycache__/
 *$py.class
 
 # Generated data files
-weather_data.csv
+data/*.csv
+data/*.db
 data.json
 
 # Streamlit secrets only (config.toml is tracked)
 .streamlit/secrets.toml
 
-data.db
