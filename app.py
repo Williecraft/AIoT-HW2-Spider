@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.graph_objects as go
 import folium
@@ -372,66 +373,16 @@ html, body, [data-testid="stAppViewContainer"],
     letter-spacing: .01em;
 }
 
-/* ─── SELECTBOX ──────────────────────────────────────────── */
+/* ─── SELECTBOX trigger ──────────────────────────────────── */
 [data-testid="stSelectbox"] label { display: none; }
-
-/* Trigger box */
 [data-testid="stSelectbox"] > div > div {
     background: rgba(10,22,38,0.9) !important;
-    border: 1px solid var(--border) !important;
+    border: 1px solid rgba(201,169,110,0.18) !important;
     border-radius: 6px !important;
-    color: var(--text) !important;
+    color: #d2e0ef !important;
     font-family: 'Raleway', sans-serif !important;
     font-size: .88rem !important;
     letter-spacing: .05em !important;
-}
-
-/* Dropdown popup container */
-[data-baseweb="popover"],
-[data-baseweb="popover"] > div,
-[data-baseweb="menu"],
-[data-baseweb="select"] ul {
-    background: #0b1c2e !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,169,110,0.1) !important;
-    backdrop-filter: blur(12px) !important;
-    overflow: hidden !important;
-}
-
-/* Each option */
-[data-baseweb="menu"] li,
-[data-baseweb="menu"] [role="option"],
-[data-baseweb="select"] [role="option"] {
-    background: transparent !important;
-    color: var(--muted) !important;
-    font-family: 'Raleway', sans-serif !important;
-    font-size: .86rem !important;
-    letter-spacing: .04em !important;
-    padding: .7rem 1.1rem !important;
-    border-bottom: 1px solid rgba(255,255,255,0.035) !important;
-    transition: background .15s, color .15s !important;
-    cursor: pointer !important;
-}
-[data-baseweb="menu"] li:last-child,
-[data-baseweb="menu"] [role="option"]:last-child {
-    border-bottom: none !important;
-}
-
-/* Hover state */
-[data-baseweb="menu"] li:hover,
-[data-baseweb="menu"] [role="option"]:hover,
-[data-baseweb="select"] [role="option"]:hover {
-    background: rgba(201,169,110,0.09) !important;
-    color: var(--gold-lt) !important;
-}
-
-/* Selected / highlighted option */
-[data-baseweb="menu"] li[aria-selected="true"],
-[data-baseweb="menu"] [role="option"][aria-selected="true"] {
-    background: rgba(201,169,110,0.13) !important;
-    color: var(--gold) !important;
-    font-weight: 600 !important;
 }
 
 /* ─── ALERTS ─────────────────────────────────────────────── */
@@ -846,3 +797,61 @@ if selected:
         <tbody>{rows_html}</tbody>
     </table>
     """, unsafe_allow_html=True)
+
+# ── Portal CSS injection (targets Base Web dropdown layer outside React root) ─
+components.html("""
+<script>
+(function injectDropdownStyles() {
+    const ID = 'wx-portal-styles';
+    if (parent.document.getElementById(ID)) return;
+    const style = parent.document.createElement('style');
+    style.id = ID;
+    style.textContent = `
+        @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;600&display=swap');
+
+        /* Popup wrapper */
+        [data-baseweb="popover"] > div,
+        [data-baseweb="select"] [data-baseweb="popover"] > div {
+            background: #0b1c2e !important;
+            border: 1px solid rgba(201,169,110,0.28) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.75), 0 0 0 1px rgba(201,169,110,0.08) !important;
+            overflow: hidden !important;
+        }
+
+        /* List container */
+        [data-baseweb="menu"],
+        [data-baseweb="menu"] ul {
+            background: #0b1c2e !important;
+            padding: 4px 0 !important;
+        }
+
+        /* Each option */
+        [data-baseweb="menu"] li {
+            background: transparent !important;
+            color: #6d8fa8 !important;
+            font-family: 'Raleway', sans-serif !important;
+            font-size: 0.86rem !important;
+            letter-spacing: 0.04em !important;
+            padding: 10px 18px !important;
+            border-bottom: 1px solid rgba(255,255,255,0.04) !important;
+            cursor: pointer !important;
+            transition: background 0.15s, color 0.15s !important;
+        }
+        [data-baseweb="menu"] li:last-child {
+            border-bottom: none !important;
+        }
+        [data-baseweb="menu"] li:hover {
+            background: rgba(201,169,110,0.1) !important;
+            color: #e8d5a8 !important;
+        }
+        [data-baseweb="menu"] li[aria-selected="true"] {
+            background: rgba(201,169,110,0.14) !important;
+            color: #c9a96e !important;
+            font-weight: 600 !important;
+        }
+    `;
+    parent.document.head.appendChild(style);
+})();
+</script>
+""", height=0)
