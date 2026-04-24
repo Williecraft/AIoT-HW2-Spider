@@ -16,5 +16,7 @@ __pycache__/
 weather_data.csv
 data.json
 
-# Streamlit
-.streamlit/
+# Streamlit secrets only (config.toml is tracked)
+.streamlit/secrets.toml
+
+data.db

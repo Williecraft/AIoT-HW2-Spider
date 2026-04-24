@@ -59,18 +59,20 @@ html, body, [data-testid="stAppViewContainer"],
     color: var(--text);
     background-color: var(--ink);
 
-    /* Layered atmospheric background */
+    /* Clouds photo + dark overlay layers */
     background-image:
-        /* Grain texture via SVG */
-        url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
-        /* Nebula glow top-left */
-        radial-gradient(ellipse 70% 55% at 15% 8%, rgba(28,58,86,0.75) 0%, transparent 65%),
-        /* Nebula glow bottom-right */
-        radial-gradient(ellipse 55% 45% at 88% 92%, rgba(12,29,48,0.8) 0%, transparent 60%),
-        /* Gold warmth center */
-        radial-gradient(ellipse 40% 30% at 50% 50%, rgba(201,169,110,0.03) 0%, transparent 70%),
-        /* Base gradient */
-        linear-gradient(160deg, #06101c 0%, #0c1d30 45%, #060f1a 100%);
+        /* Grain texture */
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"),
+        /* Dark vignette */
+        radial-gradient(ellipse 100% 80% at 50% 0%, rgba(6,16,28,0.55) 0%, rgba(6,16,28,0.82) 70%, rgba(6,16,28,0.97) 100%),
+        /* Gold warmth hint */
+        linear-gradient(180deg, rgba(201,169,110,0.04) 0%, transparent 40%),
+        /* Clouds photo */
+        url("/app/static/clouds.jpg");
+    background-size: auto, auto, auto, cover;
+    background-position: center, center, center, center top;
+    background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+    background-attachment: fixed, fixed, fixed, fixed;
     min-height: 100vh;
 }
 
@@ -392,17 +394,43 @@ html, body, [data-testid="stAppViewContainer"],
     font-family: 'Raleway', sans-serif !important;
 }
 
-/* ─── DATAFRAME ──────────────────────────────────────────── */
-[data-testid="stDataFrame"] {
+/* ─── CUSTOM TABLE ───────────────────────────────────────── */
+.wx-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Raleway', sans-serif;
+    font-size: .84rem;
+    background: rgba(12,29,48,0.55);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     overflow: hidden;
-    background: rgba(12,29,48,0.4) !important;
 }
-[data-testid="stDataFrame"] table {
-    font-family: 'Raleway', sans-serif !important;
-    font-size: .84rem !important;
+.wx-table thead tr {
+    border-bottom: 1px solid rgba(201,169,110,.3);
 }
+.wx-table th {
+    padding: .85rem 1.1rem;
+    text-align: left;
+    font-size: .63rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--gold);
+    background: rgba(201,169,110,.05);
+    white-space: nowrap;
+}
+.wx-table td {
+    padding: .8rem 1.1rem;
+    color: var(--text);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: middle;
+}
+.wx-table tbody tr:last-child td { border-bottom: none; }
+.wx-table tbody tr:hover td { background: rgba(201,169,110,.04); }
+.wx-table .td-date  { color: var(--muted); font-size:.8rem; letter-spacing:.04em; }
+.wx-table .td-maxt  { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-weight:600; color: var(--gold); }
+.wx-table .td-mint  { font-family: 'Cormorant Garamond', serif; font-size: 1rem;   color: var(--sky); }
+.wx-table .td-wx    { color: var(--muted); font-size: .82rem; }
 
 /* ─── MAP CONTAINER ──────────────────────────────────────── */
 .element-container iframe {
@@ -410,9 +438,32 @@ html, body, [data-testid="stAppViewContainer"],
     border: 1px solid var(--border) !important;
 }
 
-/* ─── SUCCESS / ERROR ────────────────────────────────────── */
-[data-testid="stSuccess"] { background: rgba(12,40,20,.5) !important; border-color: rgba(80,160,100,.35) !important; }
-[data-testid="stError"]   { background: rgba(40,12,12,.5) !important; border-color: rgba(160,60,60,.35)  !important; }
+/* ─── NOTIFICATIONS ──────────────────────────────────────── */
+/* Success → gold/amber theme */
+[data-testid="stSuccess"],
+div[data-testid="stAlert"][data-baseweb="notification"] {
+    background: rgba(12,29,48,0.75) !important;
+    border: 1px solid rgba(201,169,110,.35) !important;
+    border-left: 3px solid var(--gold) !important;
+    border-radius: 6px !important;
+    color: var(--gold-lt) !important;
+    font-family: 'Raleway', sans-serif !important;
+}
+[data-testid="stSuccess"] svg,
+[data-testid="stSuccess"] [data-testid="stMarkdownContainer"] p {
+    color: var(--gold-lt) !important;
+    fill: var(--gold) !important;
+}
+/* Error → dark rose */
+[data-testid="stError"] {
+    background: rgba(30,8,12,.7) !important;
+    border: 1px solid rgba(180,80,80,.3) !important;
+    border-left: 3px solid rgba(180,80,80,.7) !important;
+    border-radius: 6px !important;
+    color: #d4a0a0 !important;
+    font-family: 'Raleway', sans-serif !important;
+}
+[data-testid="stError"] svg { fill: #d4a0a0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -484,9 +535,33 @@ with st.sidebar:
             result = subprocess.run(['python', 'weather_crawler.py'], capture_output=True, text=True)
             if result.returncode == 0:
                 st.cache_data.clear()
-                st.success("資料更新成功")
+                st.markdown("""
+                <div style="
+                    background:rgba(12,29,48,0.8);
+                    border:1px solid rgba(201,169,110,.35);
+                    border-left:3px solid #c9a96e;
+                    border-radius:6px;
+                    padding:.6rem .9rem;
+                    font-family:'Raleway',sans-serif;
+                    font-size:.82rem;
+                    color:#e8d5a8;
+                    letter-spacing:.03em;
+                ">✦ 資料更新成功</div>
+                """, unsafe_allow_html=True)
             else:
-                st.error("更新失敗")
+                st.markdown("""
+                <div style="
+                    background:rgba(30,8,12,.75);
+                    border:1px solid rgba(180,80,80,.3);
+                    border-left:3px solid rgba(180,80,80,.7);
+                    border-radius:6px;
+                    padding:.6rem .9rem;
+                    font-family:'Raleway',sans-serif;
+                    font-size:.82rem;
+                    color:#d4a0a0;
+                    letter-spacing:.03em;
+                ">✕ 更新失敗</div>
+                """, unsafe_allow_html=True)
                 st.code(result.stderr)
 
     st.markdown("---")
@@ -699,10 +774,25 @@ if selected:
     </div>
     """, unsafe_allow_html=True)
 
-    display_df = df.rename(columns={
-        'dataDate': '日期',
-        'weather':  '天氣概況',
-        'MaxT':     '最高氣溫 (°C)',
-        'MinT':     '最低氣溫 (°C)',
-    })
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    rows_html = ""
+    for row in df.itertuples():
+        emoji = weather_emoji(row.weather)
+        rows_html += f"""
+        <tr>
+            <td class="td-date">{row.dataDate}</td>
+            <td class="td-maxt">{row.MaxT}°</td>
+            <td class="td-mint">{row.MinT}°</td>
+            <td class="td-wx">{emoji}&nbsp;{row.weather}</td>
+        </tr>"""
+
+    st.markdown(f"""
+    <table class="wx-table">
+        <thead><tr>
+            <th>日期</th>
+            <th>最高氣溫</th>
+            <th>最低氣溫</th>
+            <th>天氣概況</th>
+        </tr></thead>
+        <tbody>{rows_html}</tbody>
+    </table>
+    """, unsafe_allow_html=True)
