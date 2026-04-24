@@ -7,17 +7,15 @@ import sqlite3
 import os
 import subprocess
 
-# ─── 頁面設定 ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="台灣一週氣象預報",
-    page_icon="🌦️",
+    page_title="台灣氣象預報",
+    page_icon="🌌",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 DB_FILE = 'data.db'
 
-# 六大分區的地圖中心座標（中央氣象署「農業氣象預報」分區）
 REGION_COORDS = {
     '北部':   (25.05, 121.55),
     '中部':   (24.15, 120.70),
@@ -27,91 +25,401 @@ REGION_COORDS = {
     '東南部': (22.70, 121.10),
 }
 
-# ─── 自訂樣式 ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* ── 色票
-       #e7ecef  淺灰（背景）   #274c77  深藍（主色）
-       #6096ba  中藍（次要）   #a3cef1  淡藍（強調）
-       #8b8c89  灰（輔助文字）
-    ─────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Raleway:wght@300;400;500;600;700&display=swap');
 
-    .stApp { background-color: #e7ecef; }
-    #MainMenu, footer, header { visibility: hidden; }
+/* ─── TOKENS ─────────────────────────────────────────────── */
+:root {
+    --ink:      #06101c;
+    --abyss:    #040c16;
+    --deep:     #0c1d30;
+    --mid:      #142840;
+    --steel:    #1c3a56;
+    --gold:     #c9a96e;
+    --gold-lt:  #e8d5a8;
+    --gold-dk:  #8a6e3f;
+    --sky:      #7a9ab8;
+    --frost:    rgba(255,255,255,0.055);
+    --frost2:   rgba(255,255,255,0.09);
+    --text:     #d2e0ef;
+    --muted:    #6d8fa8;
+    --border:   rgba(201,169,110,0.18);
+    --border2:  rgba(201,169,110,0.35);
+}
 
-    /* ── Hero ── */
-    .hero {
-        background: linear-gradient(135deg, #274c77 0%, #6096ba 100%);
-        padding: 2rem 2.5rem; border-radius: 20px; color: #e7ecef;
-        box-shadow: 0 10px 30px rgba(39,76,119,.35); margin-bottom: 1.5rem;
-    }
-    .hero h1 { font-size:2.5rem; margin:0; font-weight:700; color:#e7ecef; }
-    .hero p  { font-size:1.05rem; opacity:.9; margin:.4rem 0 0 0; color:#a3cef1; }
+/* ─── RESET & BASE ───────────────────────────────────────── */
+html, body, [data-testid="stAppViewContainer"],
+[data-testid="stMain"], .main .block-container {
+    background: transparent !important;
+}
 
-    /* ── 區塊標題 ── */
-    .section-title {
-        font-size:1.4rem; font-weight:700; color:#274c77;
-        margin:1rem 0 .8rem 0; padding-left:.8rem;
-        border-left:5px solid #6096ba;
-    }
+.stApp {
+    font-family: 'Raleway', sans-serif;
+    color: var(--text);
+    background-color: var(--ink);
 
-    /* ── 天氣卡片 ── */
-    .weather-card {
-        background: linear-gradient(160deg,#fff 0%,#e7ecef 100%);
-        padding:1.2rem; border-radius:16px; text-align:center;
-        box-shadow:0 4px 14px rgba(39,76,119,.1); border:1px solid #a3cef1;
-        transition:transform .2s,box-shadow .2s;
-    }
-    .weather-card:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(39,76,119,.18); }
-    .weather-card .date  { font-size:.85rem; color:#8b8c89; font-weight:600; }
-    .weather-card .emoji { font-size:2.5rem; margin:.3rem 0; }
-    .weather-card .wx    { font-size:.8rem;  color:#274c77; min-height:2.4em; }
-    .weather-card .temp-max { color:#c0392b; font-size:1.5rem; font-weight:700; margin-top:.4rem; }
-    .weather-card .temp-min { color:#6096ba; font-size:1rem;  font-weight:500; }
+    /* Layered atmospheric background */
+    background-image:
+        /* Grain texture via SVG */
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"),
+        /* Nebula glow top-left */
+        radial-gradient(ellipse 70% 55% at 15% 8%, rgba(28,58,86,0.75) 0%, transparent 65%),
+        /* Nebula glow bottom-right */
+        radial-gradient(ellipse 55% 45% at 88% 92%, rgba(12,29,48,0.8) 0%, transparent 60%),
+        /* Gold warmth center */
+        radial-gradient(ellipse 40% 30% at 50% 50%, rgba(201,169,110,0.03) 0%, transparent 70%),
+        /* Base gradient */
+        linear-gradient(160deg, #06101c 0%, #0c1d30 45%, #060f1a 100%);
+    min-height: 100vh;
+}
 
-    /* ── Sidebar 背景 ── */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #274c77 0%, #1a3350 100%);
-    }
+#MainMenu, footer, header { visibility: hidden; }
 
-    /* Sidebar：只針對 Markdown 容器的文字設白色，不碰按鈕 */
-    [data-testid="stSidebar"] .stMarkdown h1,
-    [data-testid="stSidebar"] .stMarkdown h2,
-    [data-testid="stSidebar"] .stMarkdown h3,
-    [data-testid="stSidebar"] .stMarkdown h4,
-    [data-testid="stSidebar"] .stMarkdown p,
-    [data-testid="stSidebar"] .stMarkdown li,
-    [data-testid="stSidebar"] .stMarkdown a {
-        color: #e7ecef !important;
-    }
+/* ─── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; background: var(--abyss); }
+::-webkit-scrollbar-thumb { background: var(--steel); border-radius: 3px; }
 
-    /* Sidebar 按鈕：淡藍背景 + 深藍文字 */
-    [data-testid="stSidebar"] .stButton > button {
-        background-color: #a3cef1 !important;
-        border: none !important;
-        border-radius: 10px !important;
-        padding: .6rem 1rem !important;
-        width: 100% !important;
-    }
-    /* 按鈕及其所有子元素強制深藍 */
-    [data-testid="stSidebar"] .stButton > button,
-    [data-testid="stSidebar"] .stButton > button * {
-        color: #274c77 !important;
-        font-weight: 700 !important;
-    }
-    [data-testid="stSidebar"] .stButton > button:hover,
-    [data-testid="stSidebar"] .stButton > button:hover * {
-        background-color: #e7ecef !important;
-        color: #274c77 !important;
-    }
+/* ─── SIDEBAR ────────────────────────────────────────────── */
+[data-testid="stSidebar"] {
+    background:
+        linear-gradient(180deg, #050e19 0%, #060f1c 100%) !important;
+    border-right: 1px solid var(--border) !important;
+}
+[data-testid="stSidebar"]::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+/* Sidebar typography */
+[data-testid="stSidebar"] .stMarkdown p,
+[data-testid="stSidebar"] .stMarkdown li,
+[data-testid="stSidebar"] .stMarkdown a {
+    color: var(--muted) !important;
+    font-family: 'Raleway', sans-serif !important;
+    font-size: .82rem !important;
+    letter-spacing: .02em;
+    line-height: 1.8;
+}
+[data-testid="stSidebar"] .stMarkdown h3 {
+    color: var(--gold) !important;
+    font-family: 'Cormorant Garamond', serif !important;
+    font-size: 1.3rem !important;
+    font-weight: 400 !important;
+    letter-spacing: .18em !important;
+    text-transform: uppercase !important;
+    margin-bottom: .4rem !important;
+}
+[data-testid="stSidebar"] .stMarkdown h4 {
+    color: var(--sky) !important;
+    font-family: 'Raleway', sans-serif !important;
+    font-size: .68rem !important;
+    font-weight: 700 !important;
+    letter-spacing: .2em !important;
+    text-transform: uppercase !important;
+}
+[data-testid="stSidebar"] hr {
+    border-color: var(--border) !important;
+    margin: 1rem 0 !important;
+}
+
+/* Sidebar button */
+[data-testid="stSidebar"] .stButton > button {
+    background: transparent !important;
+    border: 1px solid var(--gold) !important;
+    border-radius: 4px !important;
+    color: var(--gold) !important;
+    font-family: 'Raleway', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: .78rem !important;
+    letter-spacing: .14em !important;
+    text-transform: uppercase !important;
+    padding: .65rem 1.2rem !important;
+    width: 100% !important;
+    transition: all .3s ease !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+[data-testid="stSidebar"] .stButton > button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dk));
+    opacity: 0;
+    transition: opacity .3s ease;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+    color: var(--ink) !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover::before { opacity: 1; }
+[data-testid="stSidebar"] .stButton > button * {
+    color: inherit !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* ─── HERO ───────────────────────────────────────────────── */
+.hero {
+    padding: 3.5rem 2.5rem 3rem;
+    margin-bottom: 2.5rem;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+}
+.hero::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0;
+    width: 12rem;
+    height: 1px;
+    background: var(--gold);
+}
+.hero-overline {
+    font-family: 'Raleway', sans-serif;
+    font-size: .67rem;
+    font-weight: 700;
+    letter-spacing: .32em;
+    text-transform: uppercase;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    margin-bottom: 1.2rem;
+}
+.hero-overline::before {
+    content: '';
+    display: inline-block;
+    width: 2rem;
+    height: 1px;
+    background: var(--gold);
+}
+.hero h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 4.2rem;
+    font-weight: 300;
+    line-height: 1.05;
+    color: var(--text);
+    margin: 0 0 .8rem;
+    letter-spacing: -.02em;
+}
+.hero h1 em {
+    font-style: italic;
+    color: var(--gold);
+    font-weight: 400;
+}
+.hero-sub {
+    font-size: .8rem;
+    color: var(--muted);
+    letter-spacing: .08em;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+}
+.hero-sub span {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.hero-sub span::before {
+    content: '·';
+    color: var(--gold);
+    font-size: 1.2rem;
+    line-height: 1;
+}
+.hero-sub span:first-child::before { display: none; }
+
+/* ─── SECTION DIVIDER ────────────────────────────────────── */
+.sec-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 2.5rem 0 1.4rem;
+}
+.sec-head .sec-label {
+    font-family: 'Raleway', sans-serif;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    color: var(--gold);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+.sec-head .sec-label::before,
+.sec-head .sec-label::after {
+    content: '◆';
+    font-size: .35rem;
+    color: var(--gold);
+    opacity: .6;
+}
+.sec-head .sec-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(201,169,110,.3) 0%, transparent 100%);
+}
+
+/* ─── CARDS ──────────────────────────────────────────────── */
+@keyframes cardIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+    0%   { left: -120%; }
+    100% { left: 120%; }
+}
+
+.weather-card {
+    background: var(--frost);
+    backdrop-filter: blur(16px) saturate(120%);
+    -webkit-backdrop-filter: blur(16px) saturate(120%);
+    border: 1px solid var(--border);
+    border-top: 2px solid rgba(201,169,110,0.25);
+    border-radius: 10px;
+    padding: 1.4rem .9rem 1.2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    animation: cardIn .55s ease both;
+    transition: border-color .3s, background .3s, transform .3s;
+}
+.weather-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -120%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+    transform: skewX(-12deg);
+    transition: none;
+}
+.weather-card:hover {
+    border-color: var(--border2);
+    border-top-color: var(--gold);
+    background: var(--frost2);
+    transform: translateY(-4px);
+}
+.weather-card:hover::after {
+    animation: shimmer .65s ease forwards;
+}
+
+/* Card stagger */
+.weather-card:nth-child(1) { animation-delay: .05s; }
+.weather-card:nth-child(2) { animation-delay: .12s; }
+.weather-card:nth-child(3) { animation-delay: .19s; }
+.weather-card:nth-child(4) { animation-delay: .26s; }
+.weather-card:nth-child(5) { animation-delay: .33s; }
+.weather-card:nth-child(6) { animation-delay: .40s; }
+.weather-card:nth-child(7) { animation-delay: .47s; }
+
+.card-date {
+    font-family: 'Raleway', sans-serif;
+    font-size: .62rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .55rem;
+}
+.card-emoji {
+    font-size: 1.9rem;
+    line-height: 1.2;
+    margin-bottom: .4rem;
+}
+.card-wx {
+    font-size: .67rem;
+    font-family: 'Raleway', sans-serif;
+    color: var(--muted);
+    min-height: 2.6em;
+    line-height: 1.5;
+    margin-bottom: .6rem;
+    padding: 0 .2rem;
+}
+.card-divider {
+    width: 1.5rem;
+    height: 1px;
+    background: var(--gold);
+    opacity: .35;
+    margin: 0 auto .6rem;
+}
+.card-tmax {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--gold);
+    line-height: 1;
+    letter-spacing: -.01em;
+}
+.card-tmax sup {
+    font-size: .8rem;
+    font-weight: 300;
+    vertical-align: super;
+    color: var(--gold-dk);
+    margin-left: 1px;
+}
+.card-tmin {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: var(--sky);
+    margin-top: .1rem;
+    letter-spacing: .01em;
+}
+
+/* ─── SELECTBOX ──────────────────────────────────────────── */
+[data-testid="stSelectbox"] label { display: none; }
+[data-testid="stSelectbox"] > div > div {
+    background: rgba(12,29,48,0.8) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    color: var(--text) !important;
+    font-family: 'Raleway', sans-serif !important;
+    font-size: .88rem !important;
+    letter-spacing: .05em !important;
+}
+
+/* ─── ALERTS ─────────────────────────────────────────────── */
+[data-testid="stAlert"] {
+    background: rgba(20,40,64,0.5) !important;
+    border: 1px solid var(--border) !important;
+    border-left: 3px solid var(--gold) !important;
+    border-radius: 6px !important;
+    color: var(--text) !important;
+    font-family: 'Raleway', sans-serif !important;
+}
+
+/* ─── DATAFRAME ──────────────────────────────────────────── */
+[data-testid="stDataFrame"] {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(12,29,48,0.4) !important;
+}
+[data-testid="stDataFrame"] table {
+    font-family: 'Raleway', sans-serif !important;
+    font-size: .84rem !important;
+}
+
+/* ─── MAP CONTAINER ──────────────────────────────────────── */
+.element-container iframe {
+    border-radius: 10px;
+    border: 1px solid var(--border) !important;
+}
+
+/* ─── SUCCESS / ERROR ────────────────────────────────────── */
+[data-testid="stSuccess"] { background: rgba(12,40,20,.5) !important; border-color: rgba(80,160,100,.35) !important; }
+[data-testid="stError"]   { background: rgba(40,12,12,.5) !important; border-color: rgba(160,60,60,.35)  !important; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# ─── 工具：天氣 emoji ───────────────────────────────────────────────────────
+# ── Utilities ─────────────────────────────────────────────────────────────────
 def weather_emoji(wx: str) -> str:
-    if not wx:
-        return "🌤️"
+    if not wx:        return "🌤️"
     if "雷" in wx:   return "⛈️"
     if "雨" in wx:   return "🌧️"
     if "雪" in wx:   return "❄️"
@@ -121,25 +429,14 @@ def weather_emoji(wx: str) -> str:
     return "🌤️"
 
 
-def weather_color(wx: str) -> str:
-    if not wx:             return "#8b8c89"
-    if "雷" in wx:          return "#274c77"
-    if "雨" in wx:          return "#6096ba"
-    if "陰" in wx:          return "#8b8c89"
-    if "多雲" in wx:        return "#6096ba"
-    if "晴" in wx:          return "#c0392b"
-    return "#8b8c89"
-
-
 def match_coord(region_name: str):
-    """把 CWA 回傳的地區名對到座標字典。"""
     for key, coord in REGION_COORDS.items():
         if key in region_name:
             return coord
     return None
 
 
-# ─── 資料存取 ────────────────────────────────────────────────────────────────
+# ── Data layer ────────────────────────────────────────────────────────────────
 @st.cache_data(ttl=600)
 def load_regions():
     if not os.path.exists(DB_FILE):
@@ -164,54 +461,56 @@ def load_region_data(region: str) -> pd.DataFrame:
 
 @st.cache_data(ttl=600)
 def load_today_all_regions() -> pd.DataFrame:
-    """抓每個地區日期最早的那筆（當作「今日」資料）給地圖用。"""
     conn = sqlite3.connect(DB_FILE)
     df = pd.read_sql_query('''
         SELECT t.regionName, t.dataDate, t.MaxT, t.MinT, t.weather
         FROM TemperatureForecasts t
         INNER JOIN (
             SELECT regionName, MIN(dataDate) AS minDate
-            FROM TemperatureForecasts
-            GROUP BY regionName
+            FROM TemperatureForecasts GROUP BY regionName
         ) m ON t.regionName = m.regionName AND t.dataDate = m.minDate
     ''', conn)
     conn.close()
     return df
 
 
-# ─── Sidebar ─────────────────────────────────────────────────────────────────
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### ⚙️ 控制台")
+    st.markdown("### Weather System")
     st.markdown("---")
 
-    if st.button("🔄  更新氣象資料"):
-        with st.spinner('正在從中央氣象署抓取最新資料...'):
+    if st.button("↻  更新氣象資料"):
+        with st.spinner("正在從中央氣象署抓取最新資料…"):
             result = subprocess.run(['python', 'weather_crawler.py'], capture_output=True, text=True)
             if result.returncode == 0:
                 st.cache_data.clear()
-                st.success("✅ 資料更新成功！")
+                st.success("資料更新成功")
             else:
-                st.error("❌ 更新失敗")
+                st.error("更新失敗")
                 st.code(result.stderr)
 
     st.markdown("---")
-    st.markdown("#### 📖 關於")
+    st.markdown("#### 關於")
     st.markdown("""
-    - 📡 資料來源：**中央氣象署**
-    - 🕸️ API：`F-A0010-001`
-    - 💾 儲存：`data.db` (SQLite3)
-    - 🐍 框架：Streamlit + Folium
-    """)
+- 資料來源：**中央氣象署**
+- API：`F-A0010-001`
+- 儲存：`data.db` (SQLite3)
+- 框架：Streamlit + Folium
+""")
 
 
-# ─── 主頁面 ──────────────────────────────────────────────────────────────────
+# ── Hero ──────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero">
-    <h1>🌦️ 台灣一週氣象預報系統</h1>
-    <p>即時掌握全台各分區天氣動態 ・ 資料來源：交通部中央氣象署</p>
+    <div class="hero-overline">Central Weather Administration · Taiwan</div>
+    <h1>台灣<em>氣象</em>預報</h1>
+    <div class="hero-sub">
+        <span>全台六大分區</span>
+        <span>一週天氣預報</span>
+        <span>即時資料更新</span>
+    </div>
 </div>
 """, unsafe_allow_html=True)
-
 
 if not os.path.exists(DB_FILE):
     st.warning("⚠️ 目前無氣象資料，請點擊左側「更新氣象資料」以抓取最新預報。")
@@ -223,15 +522,20 @@ if not regions:
     st.stop()
 
 
-# ─── 區塊 1：台灣地圖 ────────────────────────────────────────────────────────
-st.markdown('<div class="section-title">🗺️ 全台分區即時概況</div>', unsafe_allow_html=True)
+# ── Map section ───────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="sec-head">
+    <div class="sec-label">全台分區即時概況</div>
+    <div class="sec-line"></div>
+</div>
+""", unsafe_allow_html=True)
 
 today_df = load_today_all_regions()
 
 m = folium.Map(
     location=[23.7, 121.0],
     zoom_start=7,
-    tiles='CartoDB positron',
+    tiles='CartoDB dark_matter',
 )
 
 for _, row in today_df.iterrows():
@@ -240,115 +544,161 @@ for _, row in today_df.iterrows():
         continue
 
     emoji = weather_emoji(row['weather'])
-    color = weather_color(row['weather'])
 
     icon_html = f"""
     <div style="
-        background: {color};
-        color: white;
+        background: linear-gradient(145deg, #142840, #0c1d30);
+        border: 1.5px solid #c9a96e;
         border-radius: 50%;
         width: 64px; height: 64px;
         display: flex; flex-direction: column;
         align-items: center; justify-content: center;
-        font-family: sans-serif;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        border: 3px solid white;
+        font-family: 'Raleway', sans-serif;
+        box-shadow: 0 0 0 4px rgba(201,169,110,0.12), 0 6px 20px rgba(0,0,0,0.6);
+        cursor: pointer;
     ">
-        <div style="font-size: 1.4rem; line-height: 1;">{emoji}</div>
-        <div style="font-size: 0.75rem; font-weight: 700; line-height: 1.1;">{row['MaxT']}°/{row['MinT']}°</div>
+        <div style="font-size:1.3rem; line-height:1.1;">{emoji}</div>
+        <div style="font-size:.58rem; color:#c9a96e; font-weight:700; letter-spacing:.03em; line-height:1.3;">{row['MaxT']}°<span style="color:#6d8fa8">/{row['MinT']}°</span></div>
     </div>
     """
 
     popup_html = f"""
-    <div style="font-family: sans-serif; min-width: 150px;">
-        <h4 style="margin:0 0 6px 0; color:{color};">{row['regionName']}</h4>
-        <div>📅 {row['dataDate']}</div>
-        <div>{emoji} {row['weather']}</div>
-        <div>🌡️ 最高 <b style="color:#dc2626">{row['MaxT']}°C</b> / 最低 <b style="color:#2563eb">{row['MinT']}°C</b></div>
+    <div style="
+        font-family: 'Raleway', sans-serif;
+        background: #0c1d30;
+        border: 1px solid rgba(201,169,110,.35);
+        border-radius: 8px;
+        padding: 12px 14px;
+        min-width: 160px;
+        box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    ">
+        <div style="font-size:.65rem; letter-spacing:.2em; text-transform:uppercase; color:#c9a96e; margin-bottom:6px; font-weight:700;">{row['regionName']}</div>
+        <div style="font-size:.72rem; color:#6d8fa8; margin-bottom:4px;">{row['dataDate']}</div>
+        <div style="font-size:.78rem; color:#d2e0ef;">{emoji} {row['weather']}</div>
+        <div style="margin-top:8px; display:flex; gap:10px; align-items:baseline;">
+            <span style="font-family:'Cormorant Garamond',serif; font-size:1.4rem; color:#c9a96e; font-weight:600; line-height:1;">{row['MaxT']}°</span>
+            <span style="font-family:'Cormorant Garamond',serif; font-size:.95rem; color:#6d8fa8;">{row['MinT']}°</span>
+        </div>
     </div>
     """
 
     folium.Marker(
         location=coord,
         icon=folium.DivIcon(html=icon_html, icon_size=(64, 64), icon_anchor=(32, 32)),
-        popup=folium.Popup(popup_html, max_width=250),
+        popup=folium.Popup(popup_html, max_width=230),
         tooltip=row['regionName'],
     ).add_to(m)
 
-st_folium(m, height=480, use_container_width=True, returned_objects=[])
+st_folium(m, height=460, use_container_width=True, returned_objects=[])
 
 
-# ─── 區塊 2：地區選擇與詳細 ─────────────────────────────────────────────────
-st.markdown('<div class="section-title">📍 地區詳細預報</div>', unsafe_allow_html=True)
+# ── Region detail section ─────────────────────────────────────────────────────
+st.markdown("""
+<div class="sec-head">
+    <div class="sec-label">地區詳細預報</div>
+    <div class="sec-line"></div>
+</div>
+""", unsafe_allow_html=True)
 
-selected = st.selectbox("選擇想查詢的地區：", options=regions, label_visibility="collapsed")
+selected = st.selectbox("選擇地區", options=regions, label_visibility="collapsed")
 
 if selected:
     df = load_region_data(selected)
 
-    # ── 每日卡片 ──
+    # Daily cards
     cols = st.columns(len(df))
     for idx, row in enumerate(df.itertuples()):
         with cols[idx]:
             date_str = row.dataDate[-5:].replace('-', '/')
             st.markdown(f"""
-            <div class="weather-card">
-                <div class="date">📅 {date_str}</div>
-                <div class="emoji">{weather_emoji(row.weather)}</div>
-                <div class="wx">{row.weather}</div>
-                <div class="temp-max">🔺 {row.MaxT}°C</div>
-                <div class="temp-min">🔻 {row.MinT}°C</div>
+            <div class="weather-card" style="animation-delay:{idx * 0.07:.2f}s">
+                <div class="card-date">{date_str}</div>
+                <div class="card-emoji">{weather_emoji(row.weather)}</div>
+                <div class="card-wx">{row.weather}</div>
+                <div class="card-divider"></div>
+                <div class="card-tmax">{row.MaxT}<sup>°C</sup></div>
+                <div class="card-tmin">{row.MinT}°</div>
             </div>
             """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── 折線圖 ──
-    st.markdown('<div class="section-title">📈 氣溫趨勢圖</div>', unsafe_allow_html=True)
+    # Chart section
+    st.markdown("""
+    <div class="sec-head">
+        <div class="sec-label">氣溫趨勢</div>
+        <div class="sec-line"></div>
+    </div>
+    """, unsafe_allow_html=True)
 
     fig = go.Figure()
+
     fig.add_trace(go.Scatter(
         x=df['dataDate'], y=df['MaxT'],
         mode='lines+markers+text',
         name='最高氣溫',
-        line=dict(color='#c0392b', width=3, shape='spline'),
-        marker=dict(size=12, color='#c0392b', line=dict(width=2, color='white')),
+        line=dict(color='#c9a96e', width=2.5, shape='spline'),
+        marker=dict(size=9, color='#c9a96e', line=dict(width=2, color='#06101c')),
         text=[f"{t}°" for t in df['MaxT']],
         textposition='top center',
-        textfont=dict(size=13, color='#c0392b'),
+        textfont=dict(size=12, color='#e8d5a8', family='Cormorant Garamond'),
         fill='tonexty',
-        fillcolor='rgba(163, 206, 241, 0.15)',
+        fillcolor='rgba(201,169,110,0.06)',
     ))
     fig.add_trace(go.Scatter(
         x=df['dataDate'], y=df['MinT'],
         mode='lines+markers+text',
         name='最低氣溫',
-        line=dict(color='#6096ba', width=3, shape='spline'),
-        marker=dict(size=12, color='#6096ba', line=dict(width=2, color='white')),
+        line=dict(color='#7a9ab8', width=2.5, shape='spline'),
+        marker=dict(size=9, color='#7a9ab8', line=dict(width=2, color='#06101c')),
         text=[f"{t}°" for t in df['MinT']],
         textposition='bottom center',
-        textfont=dict(size=13, color='#274c77'),
+        textfont=dict(size=12, color='#6d8fa8', family='Cormorant Garamond'),
         fill='tozeroy',
-        fillcolor='rgba(96, 150, 186, 0.08)',
+        fillcolor='rgba(122,154,184,0.04)',
     ))
 
     fig.update_layout(
-        height=420,
-        margin=dict(l=20, r=20, t=30, b=20),
-        plot_bgcolor='rgba(231, 236, 239, 0.5)',
+        height=400,
+        margin=dict(l=20, r=20, t=24, b=20),
+        plot_bgcolor='rgba(12,29,48,0.55)',
         paper_bgcolor='rgba(0,0,0,0)',
         hovermode='x unified',
         legend=dict(
             orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1,
-            font=dict(color='#274c77'),
+            font=dict(color='#6d8fa8', family='Raleway', size=11),
+            bgcolor='rgba(0,0,0,0)',
         ),
-        xaxis=dict(title='', showgrid=False, tickfont=dict(size=12, color='#274c77')),
-        yaxis=dict(title='氣溫 (°C)', gridcolor='rgba(39,76,119,0.1)', tickfont=dict(size=12, color='#274c77')),
+        xaxis=dict(
+            showgrid=False,
+            tickfont=dict(size=11, color='#6d8fa8', family='Raleway'),
+            linecolor='rgba(201,169,110,0.15)',
+        ),
+        yaxis=dict(
+            title='°C',
+            gridcolor='rgba(201,169,110,0.06)',
+            gridwidth=1,
+            zeroline=False,
+            tickfont=dict(size=11, color='#6d8fa8', family='Raleway'),
+            title_font=dict(color='#6d8fa8', family='Raleway', size=11),
+        ),
+        hoverlabel=dict(
+            bgcolor='#0c1d30',
+            bordercolor='#c9a96e',
+            font=dict(color='#d2e0ef', family='Raleway', size=12),
+        ),
     )
+
     st.plotly_chart(fig, use_container_width=True)
 
-    # ── 詳細表格 ──
-    st.markdown('<div class="section-title">📊 詳細資料</div>', unsafe_allow_html=True)
+    # Table section
+    st.markdown("""
+    <div class="sec-head">
+        <div class="sec-label">詳細資料</div>
+        <div class="sec-line"></div>
+    </div>
+    """, unsafe_allow_html=True)
+
     display_df = df.rename(columns={
         'dataDate': '日期',
         'weather':  '天氣概況',
