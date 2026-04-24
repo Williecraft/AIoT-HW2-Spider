@@ -374,14 +374,64 @@ html, body, [data-testid="stAppViewContainer"],
 
 /* ─── SELECTBOX ──────────────────────────────────────────── */
 [data-testid="stSelectbox"] label { display: none; }
+
+/* Trigger box */
 [data-testid="stSelectbox"] > div > div {
-    background: rgba(12,29,48,0.8) !important;
+    background: rgba(10,22,38,0.9) !important;
     border: 1px solid var(--border) !important;
     border-radius: 6px !important;
     color: var(--text) !important;
     font-family: 'Raleway', sans-serif !important;
     font-size: .88rem !important;
     letter-spacing: .05em !important;
+}
+
+/* Dropdown popup container */
+[data-baseweb="popover"],
+[data-baseweb="popover"] > div,
+[data-baseweb="menu"],
+[data-baseweb="select"] ul {
+    background: #0b1c2e !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,169,110,0.1) !important;
+    backdrop-filter: blur(12px) !important;
+    overflow: hidden !important;
+}
+
+/* Each option */
+[data-baseweb="menu"] li,
+[data-baseweb="menu"] [role="option"],
+[data-baseweb="select"] [role="option"] {
+    background: transparent !important;
+    color: var(--muted) !important;
+    font-family: 'Raleway', sans-serif !important;
+    font-size: .86rem !important;
+    letter-spacing: .04em !important;
+    padding: .7rem 1.1rem !important;
+    border-bottom: 1px solid rgba(255,255,255,0.035) !important;
+    transition: background .15s, color .15s !important;
+    cursor: pointer !important;
+}
+[data-baseweb="menu"] li:last-child,
+[data-baseweb="menu"] [role="option"]:last-child {
+    border-bottom: none !important;
+}
+
+/* Hover state */
+[data-baseweb="menu"] li:hover,
+[data-baseweb="menu"] [role="option"]:hover,
+[data-baseweb="select"] [role="option"]:hover {
+    background: rgba(201,169,110,0.09) !important;
+    color: var(--gold-lt) !important;
+}
+
+/* Selected / highlighted option */
+[data-baseweb="menu"] li[aria-selected="true"],
+[data-baseweb="menu"] [role="option"][aria-selected="true"] {
+    background: rgba(201,169,110,0.13) !important;
+    color: var(--gold) !important;
+    font-weight: 600 !important;
 }
 
 /* ─── ALERTS ─────────────────────────────────────────────── */
