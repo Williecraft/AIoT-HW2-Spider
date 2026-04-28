@@ -16,9 +16,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-DATA_DIR = 'data'
-DB_FILE = os.path.join(DATA_DIR, 'data.db')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+DB_FILE = os.path.join(DATA_DIR, 'data.db')
 
 REGION_COORDS = {
     '北部':   (25.05, 121.55),
@@ -567,14 +567,26 @@ def match_coord(region_name: str):
     return None
 
 
+def run_weather_crawler():
+    return subprocess.run(
+        [sys.executable, 'weather_crawler.py'],
+        cwd=BASE_DIR,
+        capture_output=True,
+        text=True,
+    )
+
+
 # ── Data layer ────────────────────────────────────────────────────────────────
 @st.cache_data(ttl=600)
 def load_regions():
     if not os.path.exists(DB_FILE):
         return []
-    conn = sqlite3.connect(DB_FILE)
-    rows = conn.execute('SELECT DISTINCT regionName FROM TemperatureForecasts').fetchall()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        rows = conn.execute('SELECT DISTINCT regionName FROM TemperatureForecasts').fetchall()
+        conn.close()
+    except sqlite3.Error:
+        return []
     return [r[0] for r in rows]
 
 
@@ -612,12 +624,7 @@ with st.sidebar:
 
     if st.button("↻  更新氣象資料"):
         with st.spinner("正在從中央氣象署抓取最新資料…"):
-            result = subprocess.run(
-                [sys.executable, 'weather_crawler.py'],
-                cwd=BASE_DIR,
-                capture_output=True,
-                text=True,
-            )
+            result = run_weather_crawler()
             if result.returncode == 0:
                 st.cache_data.clear()
                 st.markdown("""
@@ -647,7 +654,7 @@ with st.sidebar:
                     letter-spacing:.03em;
                 ">✕ 更新失敗</div>
                 """, unsafe_allow_html=True)
-                st.code(result.stderr)
+                st.code(result.stderr or result.stdout)
 
     st.markdown("---")
     st.markdown("#### 關於")
@@ -672,14 +679,22 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-if not os.path.exists(DB_FILE):
-    st.warning("⚠️ 目前無氣象資料，請點擊左側「更新氣象資料」以抓取最新預報。")
-    st.stop()
-
 regions = load_regions()
 if not regions:
-    st.warning("⚠️ 資料庫中無資料，請點擊左側「更新氣象資料」。")
-    st.stop()
+    with st.spinner("首次載入資料，正在從中央氣象署抓取最新預報…"):
+        result = run_weather_crawler()
+    st.cache_data.clear()
+
+    if result.returncode != 0:
+        st.error("首次載入氣象資料失敗，請確認 Streamlit Secrets 已設定 CWA_API_TOKEN。")
+        st.code(result.stderr or result.stdout)
+        st.stop()
+
+    regions = load_regions()
+    if not regions:
+        st.error("氣象資料已更新，但資料庫仍未產生可用資料。")
+        st.code(result.stderr or result.stdout)
+        st.stop()
 
 
 # ── Map section ───────────────────────────────────────────────────────────────
