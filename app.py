@@ -7,6 +7,7 @@ from streamlit_folium import st_folium
 import sqlite3
 import os
 import subprocess
+import sys
 
 st.set_page_config(
     page_title="台灣氣象預報",
@@ -17,6 +18,7 @@ st.set_page_config(
 
 DATA_DIR = 'data'
 DB_FILE = os.path.join(DATA_DIR, 'data.db')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 REGION_COORDS = {
     '北部':   (25.05, 121.55),
@@ -610,7 +612,12 @@ with st.sidebar:
 
     if st.button("↻  更新氣象資料"):
         with st.spinner("正在從中央氣象署抓取最新資料…"):
-            result = subprocess.run(['python', 'weather_crawler.py'], capture_output=True, text=True)
+            result = subprocess.run(
+                [sys.executable, 'weather_crawler.py'],
+                cwd=BASE_DIR,
+                capture_output=True,
+                text=True,
+            )
             if result.returncode == 0:
                 st.cache_data.clear()
                 st.markdown("""
